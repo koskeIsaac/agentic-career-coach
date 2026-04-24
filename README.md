@@ -1,102 +1,31 @@
 # 🧠 Agentic Internship Search Assistant (GCP + MCP + Multi-Agent System)
 
 ## 📌 Overview
-
-This project is a **multi-agent internship search assistant** built on **Google Cloud Platform (GCP)**. It demonstrates modern autonomous AI architecture using:
-
-- Vertex AI Agent Builder (Supervisor + Career Specialist agents)
-- Model Context Protocol (MCP) for tool standardization
-- Cloud Run (backend MCP server)
-- Cloud Firestore (persistent state storage)
-- Agent-to-Agent (A2A) communication
-
-The system simulates an intelligent career assistant that can:
-- Search internships/jobs
-- Save applications
-- Track application status
-- Maintain persistent career pipeline data
-
----
+This is a multi-agent internship search assistant built on GCP using Vertex AI Agent Builder, MCP (Model Context Protocol), Cloud Run, and Firestore. It enables users to search internships, save applications, and track career pipelines through autonomous agents.
 
 ## 🏗️ Architecture
-User
-↓
-Supervisor Agent (Lead Orchestrator)
-↓ (A2A delegation)
-Career Specialist Agent
-↓ (MCP tool calls)
-Cloud Run MCP Server
-↓
-Cloud Firestore
+User → Supervisor Agent → Career Specialist Agent → MCP Server (Cloud Run) → Firestore
 
+## 🤖 Agents
+Supervisor Agent: Handles user interaction, breaks down tasks, and delegates all job-related actions to Career Specialist.
 
+Career Specialist Agent: Executes tasks, calls MCP tools, and manages job/application data.
 
----
-
-
----
-
-# 🤖 Agent Design
-
-## 🧭 Supervisor Agent (Lead Orchestrator)
-
-### Responsibilities:
-- User-facing entry point
-- Understands user intent
-- Breaks down tasks
-- Delegates ALL job-related tasks to Career Specialist
-- Does NOT call MCP tools directly
-
-### Rules:
-- Never performs job search directly
-- Never calls MCP tools
-- Always uses Career Specialist via A2A
-
----
-
-## 👨‍💼 Career Specialist Agent
-
-### Responsibilities:
-- Executes all delegated tasks
-- Calls MCP tools
-- Handles data retrieval and updates
-
-### MCP Tools Used:
-- `fetch_jobs` → retrieve internships
-- `sync_pipeline` → manage application pipeline
-
----
-
-# 🔌 MCP SERVER (Cloud Run)
-
-## 🌐 Base URL
+## 🔌 MCP Server
+Base URL:
 https://mcp-server-591823173342.us-central1.run.app/mcp
 
+## 🛠️ Tools
 
----
-
-## 🛠️ Available Tools
-
-### 1. fetch_jobs
-
-Fetch internship/job listings with filters.
-
-```json
+fetch_jobs:
 {
   "role": "software engineer intern",
   "location": "NYC"
 }
 
-### 2. sync_pipeline
+sync_pipeline:
 
-Manages internship application pipeline in Firestore.
-
-Actions:
-create
-update
-list
-Example: Create entry
-
+Create:
 {
   "action": "create",
   "data": {
@@ -108,84 +37,49 @@ Example: Create entry
   }
 }
 
-Example: List entries
-
+List:
 {
   "action": "list"
 }
 
-🗄️ FIRESTORE DATABASE
+## 🗄️ Firestore
 Collection: pipeline
 
-Each document stores internship application data.
-
 Schema:
-
 {
   "job_id": "string",
   "company": "string",
   "title": "string",
   "location": "string",
   "status": "saved | applied | interviewing",
-  "timestamp": "auto-generated"
+  "timestamp": "auto"
 }
 
-🔁 SYSTEM WORKFLOWS
-🔍 1. Job Search Flow
+## 🔁 Workflows
 
-User:
+Search:
+User → Supervisor → Career Specialist → fetch_jobs → Results
 
-“Find internships in NYC for Amazon”
+Save:
+User → Supervisor → Career Specialist → sync_pipeline(create) → Firestore
 
-Flow:
-User
- → Supervisor Agent
- → Career Specialist Agent
- → MCP fetch_jobs
- → Results returned to user
+List:
+Career Specialist → sync_pipeline(list) → Firestore
 
- 💾 2. Save Internship Flow
+## ☁️ Deploy
+gcloud run deploy mcp-server --source . --region us-central1 --allow-unauthenticated
 
-User:
+## 🧪 Test
+curl -X POST -H "Content-Type: application/json" -d '{
+  "tool": "fetch_jobs",
+  "params": {
+    "role": "intern",
+    "location": "NYC"
+  }
+}' https://mcp-server-591823173342.us-central1.run.app/mcp
 
-“Save Google internship”
-
-Flow:
-
-User
- → Supervisor
- → Career Specialist
- → MCP sync_pipeline (create)
- → Firestore updated
-
- 📊 3. View Applications Flow
-
-User:
-
-“Show my applications”
-
-Flow:
-Career Specialist → MCP sync_pipeline (list)
-→ Firestore data 
-
-☁️ DEPLOYMENT
-Deploy MCP Server (Cloud Run)
-
-gcloud run deploy mcp-server \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated
-
-  🧪 TESTING
-Direct MCP Test
-
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tool": "fetch_jobs",
-    "params": {
-      "role": "intern",
-      "location": "NYC"
-    }
-  }' \
-  https://mcp-server-591823173342.us-central1.run.app/mcp
+## 🚀 Future Work
+- Resume matching
+- Job recommendations using embeddings
+- Notifications for new internships
+- Authentication per user
